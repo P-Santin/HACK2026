@@ -121,23 +121,18 @@ def check_full_collision(total_poly: Polygon, static_polys: List[Polygon], place
 def validate_bay_with_double_gap(bay_phys_points: Polygon, bay_h: float, gap_size: float, static_polys: List[Polygon], placed_total_polys: List[Polygon], min_x: float, max_x: float, min_y: float, max_y: float, ceiling_profile: CeilingProfile) -> Optional[Polygon]:
     """
     Función validadora maestra. Comprueba el techo y luego busca un gap válido.
-    Args:
-        bay_phys_points (Polygon): Vértices de la estantería física.
-        bay_h (float): Altura de la estantería.
-        gap_size (float): Tamaño de la zona de carga.
-        static_polys (List[Polygon]): Obstáculos fijos.
-        placed_total_polys (List[Polygon]): Estanterías colocadas (Bahía + Gap).
-        min_x, max_x, min_y, max_y (float): Límites del almacén.
-        ceiling_profile (Dict): Perfil del techo.
-    Returns:
-        Optional[Polygon]: El polígono total (Bahía + Gap) si es válido, None si falla.
+    Forzamos siempre 'dreta' porque las rotaciones de 180º ya suplen la 'esquerra',
+    manteniendo la sincronización perfecta con el visualizador.
     """
+    # 1. Comprobar altura del techo
     if not is_ceiling_valid(bay_phys_points, bay_h, ceiling_profile):
         return None
 
-    for costat in ["dreta", "esquerra"]:
-        poly_total = calculate_total_poly(bay_phys_points, gap_size, costat)
-        if check_full_collision(poly_total, static_polys, placed_total_polys, min_x, max_x, min_y, max_y):
-            return poly_total 
+    # 2. Calcular polígono total con el GAP siempre en su posición por defecto (dreta)
+    poly_total = calculate_total_poly(bay_phys_points, gap_size, "dreta")
+    
+    # 3. Comprobar colisiones
+    if check_full_collision(poly_total, static_polys, placed_total_polys, min_x, max_x, min_y, max_y):
+        return poly_total 
             
     return None
