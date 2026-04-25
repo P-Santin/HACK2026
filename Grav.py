@@ -6,36 +6,17 @@ from validator import validate_bay_with_double_gap
 Polygon = List[Tuple[float, float]]
 
 def create_rotated_rect(x: float, y: float, w: float, d: float, angle_deg: float) -> Polygon:
-    """
-    Genera los vértices rotados de un rectángulo dado su origen y dimensiones.
-    """
     rad = math.radians(angle_deg)
     cos_r, sin_r = math.cos(rad), math.sin(rad)
     puntos_relativos = [(0, 0), (w, 0), (w, d), (0, d)]
     return [(x + px * cos_r - py * sin_r, y + px * sin_r + py * cos_r) for px, py in puntos_relativos]
 
-def place_shelf_gravity(bay_id: int, layout: Layout, angle_deg: float, start_pos: Tuple[float, float], target_pos: Tuple[float, float], placed_total_polys: List[Polygon], static_polys: List[Polygon], min_x: float, max_x: float, min_y: float, max_y: float) -> Tuple[Optional[Polygon], Optional[Polygon], Optional[float], Optional[float]]:
-    """
-    Lanza una bahía desde start_pos hacia target_pos haciendo búsqueda binaria para colisiones.
-    Args:
-        bay_id (int): ID de la bahía en el catálogo.
-        layout (Layout): Objeto Layout con datos del almacén.
-        angle_deg (float): Ángulo de rotación de la bahía.
-        start_pos (Tuple[float, float]): Posición inicial (origen de gravedad).
-        target_pos (Tuple[float, float]): Posición objetivo hacia donde cae.
-        placed_total_polys (List[Polygon]): Estanterías ya colocadas.
-        static_polys (List[Polygon]): Obstáculos fijos.
-        min_x, max_x, min_y, max_y (float): Límites del almacén.
-    Returns:
-        Tuple: (Polígono base, Polígono extendido, Coordenada X final, Coordenada Y final)
-    """
+def place_shelf_gravity(bay_id: int, layout: Layout, angle_deg: float, start_pos: Tuple[float, float], target_pos: Tuple[float, float], placed_total_polys: List[Polygon], static_polys: List[Polygon], floor_plan: Polygon) -> Tuple[Optional[Polygon], Optional[Polygon], Optional[float], Optional[float]]:
     specs = layout.bays[bay_id]
     w, d, h_bay, gap = specs['width'], specs['depth'], specs['height'], specs['gap']
     
     low, high = 0.0, 1.0
-    best_poly = None
-    best_total_poly = None
-    best_x, best_y = None, None
+    best_poly, best_total_poly, best_x, best_y = None, None, None, None
 
     for _ in range(10):
         mid = (low + high) / 2.0
@@ -44,10 +25,11 @@ def place_shelf_gravity(bay_id: int, layout: Layout, angle_deg: float, start_pos
         
         test_bay_poly = create_rotated_rect(cur_x, cur_y, w, d, angle_deg)
         
+        # Le pasamos el floor_plan completo en vez de los límites cuadrados
         valid_total_poly = validate_bay_with_double_gap(
             test_bay_poly, h_bay, gap, 
             static_polys, placed_total_polys, 
-            min_x, max_x, min_y, max_y, layout.ceiling
+            floor_plan, layout.ceiling
         )
 
         if valid_total_poly is None: 
@@ -61,11 +43,7 @@ def place_shelf_gravity(bay_id: int, layout: Layout, angle_deg: float, start_pos
     return best_poly, best_total_poly, best_x, best_y
 
 def calculate_fitness(placed_data: List[Dict[str, Any]], layout: Layout) -> float:
-    """
-    Calcula el fitness: ((sum prices)/(sum loads))^(2 - PercentageAreaUsed).
-    """
     if not placed_data: return float('inf')
-    
     area_almacen = 0.0
     for i in range(len(layout.floor_plan)):
         p1, p2 = layout.floor_plan[i], layout.floor_plan[(i + 1) % len(layout.floor_plan)]
