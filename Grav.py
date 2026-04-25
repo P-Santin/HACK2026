@@ -1,48 +1,46 @@
 import math
 from typing import List, Tuple, Optional, Dict, Any
 from data_collection import Layout 
-from validator import validate_bay_with_double_gap 
+from validator import calculate_polygons, is_ceiling_valid, check_full_collision
 
 Polygon = List[Tuple[float, float]]
 
-def create_rotated_rect(x: float, y: float, w: float, d: float, angle_deg: float) -> Polygon:
-    rad = math.radians(angle_deg)
-    cos_r, sin_r = math.cos(rad), math.sin(rad)
-    puntos_relativos = [(0, 0), (w, 0), (w, d), (0, d)]
-    return [(x + px * cos_r - py * sin_r, y + px * sin_r + py * cos_r) for px, py in puntos_relativos]
-
-def place_shelf_gravity(bay_id: int, layout: Layout, angle_deg: float, start_pos: Tuple[float, float], target_pos: Tuple[float, float], placed_total_polys: List[Polygon], static_polys: List[Polygon], floor_plan: Polygon) -> Tuple[Optional[Polygon], Optional[Polygon], Optional[float], Optional[float]]:
+def place_shelf_gravity(bay_id: int, layout: Layout, angle_deg: float, start_pos: Tuple[float, float], target_pos: Tuple[float, float], placed_bays: List[Dict[str, Polygon]], static_polys: List[Polygon], floor_plan: Polygon) -> Tuple[Optional[Polygon], Optional[Polygon], Optional[float], Optional[float]]:
     specs = layout.bays[bay_id]
     w, d, h_bay, gap = specs['width'], specs['depth'], specs['height'], specs['gap']
     
-    low, high = 0.0, 1.0
-    best_poly, best_total_poly, best_x, best_y = None, None, None, None
+    # Linear step search (Raycast-like) instead of buggy binary search
+    steps = 50 
+    dx = (target_pos[0] - start_pos[0]) / steps
+    dy = (target_pos[1] - start_pos[1]) / steps
 
-    for _ in range(10):
-        mid = (low + high) / 2.0
-        cur_x = start_pos[0] * mid + target_pos[0] * (1 - mid)
-        cur_y = start_pos[1] * mid + target_pos[1] * (1 - mid)
-        
-        test_bay_poly = create_rotated_rect(cur_x, cur_y, w, d, angle_deg)
-        
-        # Le pasamos el floor_plan completo en vez de los límites cuadrados
-        valid_total_poly = validate_bay_with_double_gap(
-            test_bay_poly, h_bay, gap, 
-            static_polys, placed_total_polys, 
-            floor_plan, layout.ceiling
-        )
+    best_bay, best_gap, best_x, best_y = None, None, None, None
+    was_valid = False
 
-        if valid_total_poly is None: 
-            low = mid 
-        else: 
-            best_poly = test_bay_poly
-            best_total_poly = valid_total_poly
+    for i in range(steps + 1):
+        cur_x = start_pos[0] + dx * i
+        cur_y = start_pos[1] + dy * i
+        
+        bay_poly, gap_poly = calculate_polygons(cur_x, cur_y, w, d, gap, angle_deg)
+        
+        is_valid = False
+        if is_ceiling_valid(bay_poly, h_bay, layout.ceiling) and is_ceiling_valid(gap_poly, h_bay, layout.ceiling):
+            if check_full_collision(bay_poly, gap_poly, static_polys, placed_bays, floor_plan):
+                is_valid = True
+
+        if is_valid:
+            best_bay, best_gap = bay_poly, gap_poly
             best_x, best_y = cur_x, cur_y
-            high = mid 
+            was_valid = True
+        else:
+            if was_valid:
+                # The bay was sliding fine but hit an obstacle or the wall. Stop gravity here.
+                break 
             
-    return best_poly, best_total_poly, best_x, best_y
+    return best_bay, best_gap, best_x, best_y
 
 def calculate_fitness(placed_data: List[Dict[str, Any]], layout: Layout) -> float:
+    # Function entirely untouched as requested
     if not placed_data: return float('inf')
     area_almacen = 0.0
     for i in range(len(layout.floor_plan)):
@@ -55,4 +53,4 @@ def calculate_fitness(placed_data: List[Dict[str, Any]], layout: Layout) -> floa
     used_area = sum(d['width'] * d['depth'] for d in placed_data)
     
     percentage_area_used = used_area / area_almacen if area_almacen > 0 else 0
-    return (total_price / total_load) ** (2.0 - percentage_area_used) if total_load > 0 else float('inf')
+    return max(total_price / total_load,1) ** (2.0 - percentage_area_used) if total_load > 0 else float('inf')

@@ -100,7 +100,6 @@ class Layout:
         return round(porcentaje, 2)
         
         
-
 def cargar_datos_logistica(path_folder: str) -> Layout:
     # Asegurar que el path termina en / si es un string
     if not path_folder.endswith('/') and not path_folder.endswith('\\'):
@@ -129,7 +128,6 @@ def cargar_datos_logistica(path_folder: str) -> Layout:
         ceiling=ceiling_profile,
         bays=bays_catalog
     )
-
 
 def visualizar_layout_completo(floor_plan, obstacles, bays_catalog, ceiling_profile, bays_colocadas):
     fig, ax = plt.subplots(figsize=(14, 12))

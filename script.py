@@ -21,7 +21,7 @@ def run_grasp_optimization(layout: Layout, iterations: int = 50) -> Tuple[List[A
     print(f"Iniciando optimización...")
     
     for i in range(iterations):
-        current_total_polys = [] 
+        current_placed_bays = [] # Updated to hold dictionaries {'bay': poly, 'gap': poly}
         current_shelves_data = [] 
         current_bays_format = [] 
         
@@ -33,16 +33,17 @@ def run_grasp_optimization(layout: Layout, iterations: int = 50) -> Tuple[List[A
             target_pos = (random.uniform(min_x, max_x), min_y)
             angle = random.choice([0, 90, 180, 270]) 
             
-            # Pasamos directamente el floor_plan
-            poly, total_poly, final_x, final_y = place_shelf_gravity(
+            # Unpack the new separated polygons
+            bay_poly, gap_poly, final_x, final_y = place_shelf_gravity(
                 shelf['id'], layout, angle, 
                 start_pos, target_pos, 
-                current_total_polys, static_polys, 
+                current_placed_bays, static_polys, 
                 layout.floor_plan
             )
             
-            if poly is not None:
-                current_total_polys.append(total_poly)
+            if bay_poly is not None and gap_poly is not None:
+                # Save as a dictionary so the validator can distinguish them
+                current_placed_bays.append({'bay': bay_poly, 'gap': gap_poly})
                 current_shelves_data.append(shelf)
                 current_bays_format.append([shelf['id'], final_x, final_y, angle])
                 
@@ -50,13 +51,14 @@ def run_grasp_optimization(layout: Layout, iterations: int = 50) -> Tuple[List[A
         
         if fitness < best_fitness:
             best_fitness = fitness
-            best_layout = current_total_polys
+            best_layout = current_placed_bays
             best_bays_format = current_bays_format
             print(f"Iteración {i+1}: Nuevo mejor fitness -> {best_fitness:.4f}")
             
     return best_layout, best_fitness, best_bays_format
 
 if __name__ == "__main__":
+    # Your main block stays exactly as it was
     ruta_datos = "./PublicTestCases/Case0/" 
     try:
         layout_almacen = cargar_datos_logistica(ruta_datos)

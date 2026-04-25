@@ -43,7 +43,6 @@ def polygons_overlap(poly1: Polygon, poly2: Polygon) -> bool:
     return True
 
 def is_point_in_polygon(point: Tuple[float, float], polygon: Polygon) -> bool:
-    """Ray-Casting: Comprueba si un punto está dentro de los muros reales (forma de L, etc)"""
     x, y = point
     inside = False
     n = len(polygon)
@@ -55,32 +54,68 @@ def is_point_in_polygon(point: Tuple[float, float], polygon: Polygon) -> bool:
             inside = not inside
     return inside
 
-def calculate_total_poly(p: Polygon, gap: float) -> Polygon:
-    """Genera el rectángulo físico + gap SIEMPRE en la misma posición para cuadrar con Matplotlib"""
-    p1, p2, p3, p4 = p[0], p[1], p[2], p[3]
-    v_y = (p4[0] - p1[0], p4[1] - p1[1])
-    length = math.hypot(*v_y)
-    if length == 0: return p
-    gx = (v_y[0] / length) * gap
-    gy = (v_y[1] / length) * gap
-    return [(p1[0]-gx, p1[1]-gy), (p2[0]-gx, p2[1]-gy), p3, p4]
+def segments_intersect(p1: Tuple[float, float], p2: Tuple[float, float], p3: Tuple[float, float], p4: Tuple[float, float]) -> bool:
+    """Checks if line segment p1-p2 intersects with line segment p3-p4."""
+    def ccw(A, B, C):
+        return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
+    return ccw(p1, p3, p4) != ccw(p2, p3, p4) and ccw(p1, p2, p3) != ccw(p1, p2, p4)
 
-def check_full_collision(total_poly: Polygon, static_polys: List[Polygon], placed_total_polys: List[Polygon], floor_plan: Polygon) -> bool:
-    """Valida límites exactos de los muros y colisiones físicas"""
-    for px, py in total_poly:
-        if not is_point_in_polygon((px, py), floor_plan): return False
-    for obs in static_polys:
-        if polygons_overlap(total_poly, obs): return False
-    for other in placed_total_polys:
-        if polygons_overlap(total_poly, other): return False
+def polygon_edges_intersect(poly1: Polygon, poly2: Polygon) -> bool:
+    """Checks if any edge of poly1 crosses any edge of poly2."""
+    for i in range(len(poly1)):
+        a1, a2 = poly1[i], poly1[(i + 1) % len(poly1)]
+        for j in range(len(poly2)):
+            b1, b2 = poly2[j], poly2[(j + 1) % len(poly2)]
+            if segments_intersect(a1, a2, b1, b2):
+                return True
+    return False
+
+def is_poly_inside_floor_plan(poly: Polygon, floor_plan: Polygon) -> bool:
+    """Validates that a polygon is entirely inside the room, with no walls crossing through it."""
+    for p in poly:
+        if not is_point_in_polygon(p, floor_plan): return False
+    if polygon_edges_intersect(poly, floor_plan): return False
     return True
 
-def validate_bay_with_double_gap(bay_phys_points: Polygon, bay_h: float, gap_size: float, static_polys: List[Polygon], placed_total_polys: List[Polygon], floor_plan: Polygon, ceiling_profile: CeilingProfile) -> Optional[Polygon]:
-    if not is_ceiling_valid(bay_phys_points, bay_h, ceiling_profile): return None
-    # ELIMINADO EL BUCLE. Ahora físicas y gráfica hablan el mismo idioma.
-    poly_total = calculate_total_poly(bay_phys_points, gap_size)
-    if not is_ceiling_valid(poly_total, bay_h, ceiling_profile):
-        return None
-    if check_full_collision(poly_total, static_polys, placed_total_polys, floor_plan):
-        return poly_total 
-    return None
+def calculate_polygons(x: float, y: float, w: float, d: float, gap: float, angle_deg: float) -> Tuple[Polygon, Polygon]:
+    """Generates precise Bay and Gap polygons anchoring at (x,y), matching Matplotlib logic exactly."""
+    rad = math.radians(angle_deg)
+    cos_r, sin_r = math.cos(rad), math.sin(rad)
+
+    def transform(px, py):
+        tx = px * cos_r - py * sin_r
+        ty = px * sin_r + py * cos_r
+        return (x + tx, y + ty)
+
+    # Bay relative vertices
+    bay_pts = [(0, 0), (w, 0), (w, d), (0, d)]
+    bay_poly = [transform(px, py) for px, py in bay_pts]
+
+    # Gap relative vertices (attached to bottom edge y=0)
+    gap_pts = [(0, -gap), (w, -gap), (w, 0), (0, 0)]
+    gap_poly = [transform(px, py) for px, py in gap_pts]
+
+    return bay_poly, gap_poly
+
+def check_full_collision(bay_poly: Polygon, gap_poly: Polygon, static_polys: List[Polygon], placed_bays: List[Dict[str, Polygon]], floor_plan: Polygon) -> bool:
+    """Validates limits and selectively checks collisions (allowing gap-gap overlaps)."""
+    # 1. Must be inside warehouse
+    if not is_poly_inside_floor_plan(bay_poly, floor_plan): return False
+    if not is_poly_inside_floor_plan(gap_poly, floor_plan): return False
+
+    # 2. Neither can hit static obstacles
+    for obs in static_polys:
+        if polygons_overlap(bay_poly, obs): return False
+        if polygons_overlap(gap_poly, obs): return False
+
+    # 3. Check against already placed bays
+    for placed in placed_bays:
+        p_bay = placed['bay']
+        p_gap = placed['gap']
+
+        if polygons_overlap(bay_poly, p_bay): return False  # Bay hits Bay
+        if polygons_overlap(bay_poly, p_gap): return False  # Bay hits Gap
+        if polygons_overlap(gap_poly, p_bay): return False  # Gap hits Bay
+        # NOTE: polygons_overlap(gap_poly, p_gap) is intentionally OMITTED here! Overlap is allowed.
+
+    return True
