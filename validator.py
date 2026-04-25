@@ -68,33 +68,33 @@ def calculate_total_poly(p: list[tuple[float, float]], gap: float, costat: str) 
         # Gap hacia "arriba" de p3 y p4
         return [p1, p2, (p3[0]+gx, p3[1]+gy), (p4[0]+gx, p4[1]+gy)]
 
-def check_full_collision(total_poly, static_polys, placed_total_polys, max_w, max_h):
-    """Valida límites y colisiones del polígono extendido."""
-    # Límite de almacén
+def check_full_collision(total_poly: list[tuple[float, float]], obstacles: list[obstacles], placed_bays: list[bays], warehouse: dict[str,float]):
+    """Valida límits i col·lisions de l'àrea total (bahia + gap)."""
+    # Límits magatzem
     for px, py in total_poly:
-        if px < 0 or px > max_w or py < 0 or py > max_h:
+        if px < warehouse['min_x'] or px > warehouse['max_x'] or py < warehouse['min_y'] or py > warehouse['max_y']:
             return False
 
-    # Obstáculos estáticos
-    for obs_poly in static_polys:
-        if polygons_overlap(total_poly, obs_poly): return False
+    # Obstacles
+    for obs in obstacles:
+        if polygons_overlap(total_poly, obs):
+            return False
 
-    # Otras bahías + Gaps
-    for other_total in placed_total_polys:
-        if polygons_overlap(total_poly, other_total): return False
+    # Altres bahies (que s'han guardat amb el seu gap)
+    for other in placed_bays:
+        if polygons_overlap(total_poly, other):
+            return False
 
     return True
 
-def validate_bay_with_double_gap(bay_poly, bay_h, gap_size, static_polys, placed_total_polys, max_w, max_h, ceiling_profile):
+def validate_bay_with_double_gap(bay_phys_points: list[tuple[float, float]], bay_h:int, gap_size:int, obstacles:list[obstacles], placed_bays: list[bays], warehouse:list[tuple[float, float]], ceiling_map: dict[tuple[float,float],int]):
     """Funció principal: Sostre -> Gap Dreta? -> Gap Esquerra?"""
-    # Validamos techo primero con la bahía sola (el gap puede tener techo bajo porque no hay estantería)
-    if not is_ceiling_valid(bay_poly, bay_h, ceiling_profile):
-        return None
 
-    # Probar las opciones de Gap
+    # 2. Provar les dues opcions de Gap
     for costat in ["dreta", "esquerra"]:
-        poly_total = calculate_total_poly(bay_poly, gap_size, costat)
-        if check_full_collision(poly_total, static_polys, placed_total_polys, max_w, max_h):
-            return poly_total # Retornamos el área TOTAL para guardarla
+        poly_total = calculate_total_poly(bay_phys_points, gap_size, costat)
+
+        if is_ceiling_valid(poly_total,bay_h,ceiling_map) and check_full_collision(poly_total, obstacles, placed_bays, warehouse):
+            return True # Retornem el polígon que ha funcionat
             
-    return None
+    return False
