@@ -1,24 +1,24 @@
 import pandas as pd
-from typing import List, Dict, Any
+from typing import Any
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import math
 import matplotlib.cm as cm
 
 class Layout:
-    floor_plan: List[List[float]]
-    obstacles: List[Dict[str, Any]]
-    ceiling: Dict[str, List[float]]
-    bays: Dict[int, Dict[str, Any]]
+    floor_plan: list[list[float]]
+    obstacles: list[dict[str, Any]]
+    ceiling: dict[str, list[float]]
+    bays: dict[int, dict[str, Any]]
 
     def __init__(self, floor_plan, obstacles, ceiling, bays):
         # Atributos principales
-        self.floor_plan: List[List[float]] = floor_plan
-        self.obstacles: List[Dict[str, Any]] = obstacles
-        self.ceiling: Dict[str, List[float]] = ceiling
-        self.bays: Dict[int, Dict[str, Any]] = bays
+        self.floor_plan: list[list[float]] = floor_plan
+        self.obstacles: list[dict[str, Any]] = obstacles
+        self.ceiling: dict[str, list[float]] = ceiling
+        self.bays: dict[int, dict[str, Any]] = bays
 
-    def esquinas_obstaculo(self, obstaculo: Dict[str, Any]) -> List[tuple]:
+    def esquinas_obstaculo(self, obstaculo: dict[str, Any]) -> list[tuple]:
         """
         Calcula las 4 esquinas de un obstáculo dado.
         Retorna una lista de tuplas [(x1,y1), (x2,y2), (x3,y3), (x4,y4)]
@@ -37,7 +37,7 @@ class Layout:
         return [esquina_inf_izq, esquina_inf_der, esquina_sup_der, esquina_sup_izq]
     
   
-    def obtener_esquinas_bay(self, bay_data: list) -> List[tuple]:
+    def obtener_esquinas_bay(self, bay_data: list) -> list[tuple]:
             """
             bay_data: [id, x, y, rotation]
             """
@@ -69,7 +69,7 @@ class Layout:
 
         return w*d
     
-    def calcular_porcentaje_ocupacion(self, lista_bays_colocadas: List[list]) -> float:
+    def calcular_porcentaje_ocupacion(self, lista_bays_colocadas: list[list]) -> float:
         """
         Calcula qué porcentaje del almacén está cubierto por las bahías.
         lista_bays_colocadas: [[id, x, y, rot], ...]

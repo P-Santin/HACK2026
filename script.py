@@ -1,26 +1,32 @@
 import random
+from typing import List, Tuple, Any
+from yogi import read
 
 from data_collection import cargar_datos_logistica, Layout, visualizar_layout_completo
 from Grav import place_shelf_gravity, calculate_fitness
 
-# ==============================================================================
-# MOTOR DE OPTIMIZACIÓN (GRASP)
-# ==============================================================================
-
-def run_grasp_optimization(layout: Layout, iterations=50):
+def run_grasp_optimization(layout: Layout, iterations: int = 50) -> Tuple[List[List[Tuple[float, float]]], float, List[List[Any]]]:
+    """
+    Bucle principal de la metaheurística GRASP.
+    
+    Args:
+        layout (Layout): Objeto con datos de obstáculos, techo y almacén.
+        iterations (int): Número de layouts completos a generar antes de elegir el mejor.
+        
+    Returns:
+        Tuple: (Mejor layout de polígonos, Mejor Fitness, Lista formateada para el visualizador)
+    """
     best_layout = []
     best_fitness = float('inf')
-    best_bays_format = [] # Guardará el formato para el visualizador
+    best_bays_format = [] 
     
-    # Extraer catálogo como lista de diccionarios
     catalog_shelves = [{'id': k, **v} for k, v in layout.bays.items()]
     
-    # Calcular dimensiones máximas del almacén a partir de floor_plan
     xs = [p[0] for p in layout.floor_plan]
     ys = [p[1] for p in layout.floor_plan]
-    max_w, max_h = max(xs), max(ys)
+    min_x, max_x = min(xs), max(xs)
+    min_y, max_y = min(ys), max(ys)
     
-    # Área total para el fitness (fórmula de Gauss / Shoelace)
     area_almacen = 0.0
     n = len(layout.floor_plan)
     for i in range(n):
@@ -29,46 +35,35 @@ def run_grasp_optimization(layout: Layout, iterations=50):
         area_almacen -= layout.floor_plan[j][0] * layout.floor_plan[i][1]
     area_almacen = abs(area_almacen) / 2.0
     
-    # PREPARAR OBSTÁCULOS ESTÁTICOS
-    static_polys = []
-    for obs in layout.obstacles:
-        poly = layout.esquinas_obstaculo(obs)
-        static_polys.append(poly)
+    static_polys = [layout.esquinas_obstaculo(obs) for obs in layout.obstacles]
     
-    print(f"Iniciando optimización. Dimensiones: {max_w}x{max_h}, Área: {area_almacen}")
+    print(f"Iniciando optimización. Dimensiones: X[{min_x}, {max_x}], Y[{min_y}, {max_y}], Área: {area_almacen}")
     
     for i in range(iterations):
-        current_total_polys = [] # Importante: Aquí guardamos Bahía+Gap para no pisarlos
+        current_total_polys = [] 
         current_shelves_data = [] 
         current_bays_format = [] 
         
-        # Mezclamos el catálogo
         random.shuffle(catalog_shelves)
-        
-        # Repetimos el catálogo unas cuantas veces para intentar llenar el almacén
         bays_to_place = catalog_shelves * 10 
         
         for shelf in bays_to_place:
-            # Vector de gravedad (esquina superior izq cayendo hacia el centro inferior)
-            start_pos = (random.uniform(0, max_w), max_h)
-            target_pos = (random.uniform(0, max_w), 0)
+            start_pos = (random.uniform(min_x, max_x), max_y)
+            target_pos = (random.uniform(min_x, max_x), min_y)
             angle = random.choice([0, 90, 180, 270]) 
             
-            # LLAMADA ACTUALIZADA (Nuevos argumentos y variables de retorno)
             poly, total_poly, final_x, final_y = place_shelf_gravity(
                 shelf['id'], layout, angle, 
                 start_pos, target_pos, 
-                current_total_polys, static_polys, max_w, max_h
+                current_total_polys, static_polys, 
+                min_x, max_x, min_y, max_y
             )
             
             if poly is not None:
-                # Guardamos el polígono extendido para que las siguientes no lo pisen
                 current_total_polys.append(total_poly)
                 current_shelves_data.append(shelf)
-                # Formato exacto que pide matplotlib
                 current_bays_format.append([shelf['id'], final_x, final_y, angle])
                 
-        # Fitness desde Grav.py
         fitness = calculate_fitness(current_shelves_data, layout)
         
         if fitness < best_fitness:
@@ -79,25 +74,20 @@ def run_grasp_optimization(layout: Layout, iterations=50):
             
     return best_layout, best_fitness, best_bays_format
 
-# ==============================================================================
-# EJECUCIÓN PRINCIPAL
-# ==============================================================================
-
 if __name__ == "__main__":
-    # Asegúrate de poner la ruta correcta a la carpeta donde están tus CSVs
-    ruta_datos = "./PublicTestCases/" 
+    
+    case_dir = read(str)
+    ruta_datos = "./PublicTestCases/" + case_dir + "/" 
     
     try:
         layout_almacen = cargar_datos_logistica(ruta_datos)
         
-        # Ejecutar el algoritmo
         mejor_layout, mejor_score, bays_colocadas = run_grasp_optimization(layout_almacen, iterations=20)
         
         print("\n--- RESULTADO FINAL ---")
         print(f"Mejor Fitness (Mínimo coste ponderado): {mejor_score:.4f}")
         print(f"Total de estanterías colocadas: {len(bays_colocadas)}")
         
-        # LLAMADA AL VISUALIZADOR
         visualizar_layout_completo(
             layout_almacen.floor_plan, 
             layout_almacen.obstacles, 
@@ -108,4 +98,3 @@ if __name__ == "__main__":
         
     except FileNotFoundError as e:
         print(f"Error cargando CSVs: {e}")
-        print("Comprueba que 'ruta_datos' apunta a la carpeta correcta.")
