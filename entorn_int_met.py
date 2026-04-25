@@ -208,7 +208,7 @@ SCORE:          {score:.4f}
             ax.fill(*b['poly'].exterior.xy, color=base_color, alpha=0.8, edgecolor=edge_color, lw=line_width)
             
             # Dibujar Gap (Sutil)
-            ax.fill(*b['gap_poly'].exterior.xy, color=base_color, alpha=0.05, ls=':')
+            ax.fill(*b['gap_poly'].exterior.xy, color=base_color, alpha=0.2, ls=':')
 
             # --- POSICIONAMIENTO DE TEXTO INTERNO ---
             cx, cy = b['poly'].centroid.x, b['poly'].centroid.y
