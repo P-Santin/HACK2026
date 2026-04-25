@@ -1,8 +1,9 @@
 import pandas as pd
-from pathlib import Path
 from typing import List, Dict, Any
-
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import math
+import matplotlib.cm as cm
 
 class Layout:
     floor_plan: List[List[float]]
@@ -128,3 +129,95 @@ def cargar_datos_logistica(path_folder: str) -> Layout:
         ceiling=ceiling_profile,
         bays=bays_catalog
     )
+
+
+def visualizar_layout_completo(floor_plan, obstacles, bays_catalog, ceiling_profile, bays_colocadas):
+    fig, ax = plt.subplots(figsize=(14, 12))
+    
+    # --- 1. PREPARAR EL "CLIP PATH" (MÁSCARA) ---
+    # Creamos un polígono con la forma exacta del almacén
+    warehouse_poly = patches.Polygon(floor_plan, closed=True, facecolor='none')
+    ax.add_patch(warehouse_poly) # Necesitamos añadirlo para usarlo de máscara
+
+    # --- 2. DIBUJAR EL CEILING (LIMITADO AL PLANO) ---
+    c_x = ceiling_profile['x']
+    c_h = ceiling_profile['height']
+    
+    y_min, y_max = 0, 10000 
+    x_max_fp = max(p[0] for p in floor_plan)
+    min_h, max_h = min(c_h), max(c_h)
+    
+    for i in range(len(c_x)):
+        x_start = c_x[i]
+        x_end = c_x[i+1] if i+1 < len(c_x) else x_max_fp
+        width_seg = x_end - x_start
+        
+        if width_seg <= 0: continue
+
+        # Cálculo de color (Gris oscuro = Techo bajo)
+        if max_h == min_h:
+            color_val = 0.2
+        else:
+            norm_h = (c_h[i] - min_h) / (max_h - min_h)
+            color_val = 0.15 + (1.0 - norm_h) * 0.45 
+        
+        # Dibujamos el rectángulo del techo
+        rect_c = patches.Rectangle((x_start, y_min), width_seg, y_max - y_min, 
+                                   facecolor=cm.Greys(color_val), alpha=0.5, zorder=0)
+        
+        # APLICAR MÁSCARA: Aquí está la magia
+        rect_c.set_clip_path(warehouse_poly)
+        ax.add_patch(rect_c)
+        
+        # Etiqueta de altura (solo si está dentro o cerca del área)
+        ax.text(x_start + 100, 500, f"H: {c_h[i]}", fontsize=8, color='black', alpha=0.5)
+
+    # --- 3. DIBUJAR EL PERÍMETRO (Encima del techo) ---
+    fp_x = [p[0] for p in floor_plan] + [floor_plan[0][0]]
+    fp_y = [p[1] for p in floor_plan] + [floor_plan[0][1]]
+    ax.plot(fp_x, fp_y, color='navy', lw=4, zorder=5)
+
+    # --- 4. DIBUJAR OBSTÁCULOS ---
+    for obs in obstacles:
+        rect = patches.Rectangle((obs['x'], obs['y']), obs['width'], obs['depth'], 
+                                 edgecolor='darkred', facecolor='red', alpha=0.6, zorder=10)
+        ax.add_patch(rect)
+
+    # --- 5. DIBUJAR BAHÍAS Y GAPs ---
+    for bay in bays_colocadas:
+        bay_id, bx, by, rot = bay
+        specs = bays_catalog[bay_id]
+        w, d, gap = specs['width'], specs['depth'], specs['gap']
+        
+        rad = math.radians(rot)
+        
+        # Bahía
+        rect_bay = patches.Rectangle((bx, by), w, d, angle=rot,
+                                     edgecolor='darkgreen', facecolor='forestgreen', alpha=0.9, zorder=15)
+        ax.add_patch(rect_bay)
+
+        # GAP
+        off_x = -gap * math.sin(rad)
+        off_y = gap * math.cos(rad)
+        rect_gap = patches.Rectangle((bx - off_x, by - off_y), w, gap, angle=rot,
+                                     edgecolor='orange', facecolor='gold', alpha=0.6, zorder=12)
+        ax.add_patch(rect_gap)
+
+        ax.text(bx + 50, by + 50, f"{bay_id}", fontsize=8, color='white', fontweight='bold', zorder=20)
+
+    # Configuración final
+    ax.set_aspect('equal')
+    ax.set_facecolor('white') # Fondo exterior limpio
+    plt.title("Layout Logístico con Techo Recortado a la Planta", pad=20)
+    
+    # Leyenda
+    legend_elements = [
+        patches.Patch(color='gray', alpha=0.5, label='Altura Techo (Sombreado Interno)'),
+        patches.Patch(color='red', alpha=0.6, label='Obstáculo'),
+        patches.Patch(color='forestgreen', label='Bahía'),
+        patches.Patch(color='gold', alpha=0.6, label='GAP (Carga)')
+    ]
+    ax.legend(handles=legend_elements, loc='upper right')
+    
+    plt.tight_layout()
+    plt.show()
