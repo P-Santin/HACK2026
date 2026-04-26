@@ -128,7 +128,7 @@ class WorldProxy:
 
 
 # ══════════════════════════════════════════════════════════
-# AGRESSIVE HEURISTIC: ACTIVE NODE PACKING
+# HEURÍSTICA AGRESIVA: ACTIVE NODE PACKING
 # ══════════════════════════════════════════════════════════
 
 def worker_aggressive_packer(params):
@@ -345,10 +345,12 @@ def visualize(world: WorldProxy, output_path=None):
 def main(time_limit=30.0):
     print("=== Mecalux Bay Optimizer v4 (Active Node Pack) ===\n")
 
-    wh_poly   = parse_warehouse('PublicTestCases/Case1/warehouse.csv')
-    obstacles = parse_obstacles('PublicTestCases/Case1/obstacles.csv')
-    ceiling   = parse_ceiling('PublicTestCases/Case1/ceiling.csv')
-    bay_types = parse_bay_types('PublicTestCases/Case1/types_of_bays.csv')
+    cas = "Case0"
+
+    wh_poly   = parse_warehouse(f'{cas}/warehouse.csv')
+    obstacles = parse_obstacles(f'{cas}/obstacles.csv')
+    ceiling   = parse_ceiling(f'{cas}/ceiling.csv')
+    bay_types = parse_bay_types(f'{cas}/types_of_bays.csv')
     
     print(f"Lanzando enjambre gravitacional. Límite: {time_limit}s...")
     best_placed = run_parallel_optimization(wh_poly, obstacles, ceiling, bay_types, time_limit)
