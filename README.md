@@ -43,6 +43,24 @@ Since the search space is infinite and the expexted time limit is of 30 seconds,
 
 The winning solution is packaged into WorldProxy, exported to solution.csv, and rendered via Matplotlib. In the 2D map, bay footprints are opaque while aisles are semi-transparent; this allows for a visual audit where overlapping aisles (representing maximum efficiency) appear as darker, intensified colors.
 
+## Repository contents
+
+The structure of this repository contains the core optimization engine, the necessary input files, and the output directories:
+
+```text
+📦 baymaxxing
+ ┣ 📜 optimizer.py          # Core heuristic and parallel processing engine
+ ┣ 📜 environment.py        # Visualizer engine
+ ┣ 📦 TestCases             # Folder with test cases
+ |  ┣ 📜 warehouse.csv         # Input: Warehouse perimeter coordinates
+ |  ┣ 📜 obstacles.csv         # Input: Internal obstacles and restricted areas
+ |  ┣ 📜 ceiling.csv           # Input: Stepped ceiling heights
+ |  ┗ 📜 types_of_bays.csv     # Input: Catalog of available bay types
+ ┣ 📜 solution.csv          # Output: Final bay placements (Generated)
+ ┣ 📜 solution.png          # Output: 2D Render of the layout (Generated)
+ ┗ 📜 README.md             # Project documentation
+ ``` 
+
 
 ## Requirements
 % comparar con varias ejecuciones para decidir 

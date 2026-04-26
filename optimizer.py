@@ -9,6 +9,7 @@ import multiprocessing as mp
 from dataclasses import dataclass
 from typing import List
 from collections import Counter
+from yogi import read
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -345,7 +346,8 @@ def visualize(world: WorldProxy, output_path=None):
 def main(time_limit=30.0):
     print("=== Mecalux Bay Optimizer v4 (Active Node Pack) ===\n")
 
-    cas = "Case0"
+    print("Enter Case: (format: 'Case[n]')")
+    cas = read(str)
 
     wh_poly   = parse_warehouse(f'{cas}/warehouse.csv')
     obstacles = parse_obstacles(f'{cas}/obstacles.csv')
