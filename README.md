@@ -4,8 +4,8 @@
 * [Introduction to the project](#what-is-baymaxxing)
 * [Repository contents](#repository-contents)
 * [Use Overview](#use-overview)
-* [Requirements](#requirements)
-* [Installation](#installation)
+* [Requirements and Installation](#requirements-and-installation)
+
 
 ## What is BAYMAXXING?
 
@@ -61,8 +61,34 @@ The structure of this repository contains the core optimization engine, the nece
  ┗ 📜 README.md             # Project documentation
  ``` 
 
+## Use Overview
 
-## Requirements
-% comparar con varias ejecuciones para decidir 
+### Script
 
-matplotlib, spdf, pandas, streamlit, plotly, shapely, 
+To run the script, execute 
+```bash
+python3 optimizer.py
+``` 
+Then, introduce the Case folder with the input .csv files. It is recommended they are named `ceiling.sv`, `obstacles.csv`, `types_of_bays.csv`, `warehouse.csv`.
+
+### Environment
+
+To activate the visual environment, run:
+
+```bash
+streamlit run environment.py
+```
+
+The main interface is displayed: on the left, we see the section to upload the input CSVs. In the center, the current warehouse layout is rendered, and on the right, the main menu offers various options. You can manually insert new bays, execute the algorithm to generate an optimized layout, or export the current configuration back to a CSV.
+
+Additionally, the interface features two key tables: one detailing the count of each bay type and their corresponding load capacities, and another displaying overall layout metrics. Finally, users have the flexibility to independently edit each placed bay or upload a pre-designed distribution directly via CSV.
+
+## Requirements and Installation
+
+This build makes use of the `matplotlib`, `fpdf`, `multiprocessing`, and `pandas` libraries to execute the algorithm, while `streamlit`, `plotly` and `shapely` are used to power the 3D visualization environment. To download said libraries and execute the following: 
+
+
+```bash
+pip install matplotlib fpdf pandas streamlit plotly shapely multiprocessing 
+git clone https://github.com/P-Santin/HACK2026.git
+```
