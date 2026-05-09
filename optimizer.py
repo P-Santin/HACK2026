@@ -262,7 +262,7 @@ def worker_aggressive_packer(params):
 def run_parallel_optimization(wh_poly_coords, obstacles, ceiling, bay_types, time_limit):
     tasks = []
     # Lanzamos exploradores gravitacionales desde todas las direcciones en paralelo
-    directions = ['BL', 'TR', 'LB', 'RT', 'Y_OUT']
+    directions = ['BL', 'TR', 'LB', 'RT','Y_OUT']
     for d in directions:
         tasks.append((d, wh_poly_coords, obstacles, ceiling, bay_types, time_limit))
                 
@@ -349,10 +349,10 @@ def main(time_limit=30.0):
     print("Enter Case: (format: 'Case[n]')")
     cas = read(str)
 
-    wh_poly   = parse_warehouse(f'{cas}/warehouse.csv')
-    obstacles = parse_obstacles(f'{cas}/obstacles.csv')
-    ceiling   = parse_ceiling(f'{cas}/ceiling.csv')
-    bay_types = parse_bay_types(f'{cas}/types_of_bays.csv')
+    wh_poly   = parse_warehouse(f'PublicTestCases/{cas}/warehouse.csv')
+    obstacles = parse_obstacles(f'PublicTestCases/{cas}/obstacles.csv')
+    ceiling   = parse_ceiling(f'PublicTestCases/{cas}/ceiling.csv')
+    bay_types = parse_bay_types(f'PublicTestCases/{cas}/types_of_bays.csv')
     
     print(f"Lanzando enjambre gravitacional. Límite: {time_limit}s...")
     best_placed = run_parallel_optimization(wh_poly, obstacles, ceiling, bay_types, time_limit)
